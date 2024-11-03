@@ -1,0 +1,201 @@
+******Dashboard w courbouwet b alwen tayra
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temperature & Humidity Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 2em;
+      color: #4CAF50;
+      text-align: center;
+    }
+
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 600px;
+      margin-top: 20px;
+    }
+
+    .cards {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .card {
+      flex: 1;
+      margin: 10px;
+      padding: 20px;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+    }
+
+    .icon {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+
+    .temperature-card .icon {
+      color: #FF5733;
+    }
+
+    .humidity-card .icon {
+      color: #33A2FF;
+    }
+
+    .card h2 {
+      font-size: 1.2em;
+      color: #555;
+    }
+
+    .card p {
+      font-size: 1.5em;
+      margin: 5px 0;
+      color: #333;
+    }
+
+    #chartContainer {
+      width: 90%;
+      max-width: 800px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Temperature & Humidity Dashboard</h1>
+
+  <div class="dashboard">
+    <div class="cards">
+      <div class="card temperature-card">
+        <span class="icon">🌡️</span>
+        <h2>Temperature</h2>
+        <p id="temperature">-- °C</p>
+      </div>
+      <div class="card humidity-card">
+        <span class="icon">💧</span>
+        <h2>Humidity</h2>
+        <p id="humidity">-- %</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart Container -->
+  <div id="chartContainer">
+    <canvas id="tempHumidityChart"></canvas>
+  </div>
+
+  <script>
+    // Initialize chart
+    const ctx = document.getElementById('tempHumidityChart').getContext('2d');
+    const tempHumidityChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [], // Time labels
+        datasets: [
+          {
+            label: 'Temperature (°C)',
+            data: [],
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            fill: true,
+            tension: 0.1
+          },
+          {
+            label: 'Humidity (%)',
+            data: [],
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            fill: true,
+            tension: 0.1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Time' }},
+          y: { title: { display: true, text: 'Value' }}
+        }
+      }
+    });
+
+    async function fetchCurrentData() {
+      try {
+        const response = await fetch('/api/temperature/latest');
+        const data = await response.json();
+        document.getElementById('temperature').innerText = `${data.temperature} °C`;
+        document.getElementById('humidity').innerText = `${data.humidity} %`;
+      } catch (error) {
+        console.error('Error fetching current data:', error);
+        document.getElementById('temperature').innerText = 'Error';
+        document.getElementById('humidity').innerText = 'Error';
+      }
+    }
+
+    async function fetchHistoricalData() {
+      try {
+        const response = await fetch('/api/temperature/history');
+        const data = await response.json();
+
+        // Extract data for chart
+        const labels = data.map(entry => new Date(entry.createdAt).toLocaleTimeString());
+        const temperatureData = data.map(entry => entry.temperature);
+        const humidityData = data.map(entry => entry.humidity);
+
+        // Update chart
+        tempHumidityChart.data.labels = labels;
+        tempHumidityChart.data.datasets[0].data = temperatureData;
+        tempHumidityChart.data.datasets[1].data = humidityData;
+        tempHumidityChart.update();
+      } catch (error) {
+        console.error('Error fetching historical data:', error);
+      }
+    }
+
+    // Fetch initial data and set intervals to update
+    fetchCurrentData();
+    fetchHistoricalData();
+    setInterval(fetchCurrentData, 10000); // Update current data every 10 seconds
+    setInterval(fetchHistoricalData, 60000); // Update historical data every 60 seconds
+  </script>
+</body>
+</html>
